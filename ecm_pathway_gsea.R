@@ -39,11 +39,11 @@ dat <- dat %>%
 rank_vec <- dat$score
 names(rank_vec) <- dat$Gene
 
-# -------- 关键：一次性清洗 rank_vec（去 NA/Inf）--------
+# -------- Key: clean rank_vec once (remove NA/Inf) --------
 rank_vec <- rank_vec[is.finite(rank_vec)]
 N <- length(rank_vec)
 
-# -------------------- ECM geneset --------------------
+# -------------------- ECM gene set --------------------
 ecm_genes <- c(
   "COL1A1","COL1A2","COL2A1","COL3A1","COL4A1","COL4A2","COL4A3","COL4A4","COL4A5","COL4A6",
   "COL5A1","COL5A2","COL5A3","COL6A1","COL6A2","COL6A3","COL7A1","COL8A1","COL8A2","COL9A1",
@@ -74,7 +74,7 @@ ES <- running_ES[peak_idx]
 zero_cross <- which(diff(sign(rank_vec)) != 0)
 zero_idx <- if (length(zero_cross)) zero_cross[1] + 1 else NA_integer_
 
-# -------------------- axis (用最终 N 重新定义，避免错位) --------------------
+# -------------------- axis (redefine with final N to avoid misalignment) --------------------
 breaks_x <- fixed_ticks[fixed_ticks <= N]
 limits_x <- c(0, N)
 
@@ -91,11 +91,11 @@ heat_df <- data.frame(bin = bin_id, score = as.numeric(rank_vec)) %>%
 
 # -------------------- grey bars (1000 samples) --------------------
 nsamp_bar <- min(1000L, N)
-idx_bar <- unique(pmin(N, pmax(1, round(seq(1, N, length.out = nsamp_bar)))))  # 防 rounding 越界
+idx_bar <- unique(pmin(N, pmax(1, round(seq(1, N, length.out = nsamp_bar)))))  # avoid rounding out of bounds
 bar_df <- data.frame(Rank = idx_bar, val = as.numeric(rank_vec[idx_bar])) %>%
   filter(is.finite(val))
 
-# winsorize（避免极端值影响观感/触发绘图异常）
+# Winsorize (avoid extreme values affecting aesthetics or causing plotting errors)
 lims <- quantile(bar_df$val, probs = c(0.005, 0.995), na.rm = TRUE)
 bar_df$val <- pmax(pmin(bar_df$val, lims[2]), lims[1])
 
