@@ -1,5 +1,5 @@
 # ============================================================
-# ECM-receptor interaction (mmu04512) GSEV plot (4 panels)
+# TNF signaling pathway (mmu04668) GSEV plot (4 panels)
 # Ranking: -log10(p) * sign(log2FC)
 # X ticks fixed: 0,500,1000,1500,2000,2500,3000,3500
 # ES panel and grey-bar panel share identical X axis (aligned)
@@ -41,11 +41,11 @@ dat <- dat %>%
 rank_vec <- dat$score
 names(rank_vec) <- dat$Gene
 
-# -------- 关键：一次性清洗 rank_vec（去 NA/Inf）--------
+# -------- Key: clean rank_vec once (remove NA/Inf) --------
 rank_vec <- rank_vec[is.finite(rank_vec)]
 N <- length(rank_vec)
 
-# -------------------- ECM geneset --------------------
+# -------------------- TNF gene set --------------------
 tnf_genes <- c(
   "TNF","TNFRSF1A","TNFRSF1B","LTB","TNFSF10","FAS","FASLG",
   "TRADD","TRAF2","TRAF5","RIPK1","MAP3K7","TAB1","TAB2","TAB3",
@@ -77,7 +77,7 @@ ES <- running_ES[peak_idx]
 zero_cross <- which(diff(sign(rank_vec)) != 0)
 zero_idx <- if (length(zero_cross)) zero_cross[1] + 1 else NA_integer_
 
-# -------------------- axis (用最终 N 重新定义，避免错位) --------------------
+# -------------------- axis (redefine with final N to avoid misalignment) --------------------
 breaks_x <- fixed_ticks[fixed_ticks <= N]
 limits_x <- c(0, N)
 
@@ -94,11 +94,11 @@ heat_df <- data.frame(bin = bin_id, score = as.numeric(rank_vec)) %>%
 
 # -------------------- grey bars (1000 samples) --------------------
 nsamp_bar <- min(1000L, N)
-idx_bar <- unique(pmin(N, pmax(1, round(seq(1, N, length.out = nsamp_bar)))))  # 防 rounding 越界
+idx_bar <- unique(pmin(N, pmax(1, round(seq(1, N, length.out = nsamp_bar)))))  # avoid rounding out of bounds
 bar_df <- data.frame(Rank = idx_bar, val = as.numeric(rank_vec[idx_bar])) %>%
   filter(is.finite(val))
 
-# winsorize（避免极端值影响观感/触发绘图异常）
+# Winsorize (avoid extreme values affecting aesthetics or causing plotting errors)
 lims <- quantile(bar_df$val, probs = c(0.005, 0.995), na.rm = TRUE)
 bar_df$val <- pmax(pmin(bar_df$val, lims[2]), lims[1])
 
@@ -112,7 +112,7 @@ p1 <- ggplot(data.frame(Rank = 1:N, ES = running_ES), aes(Rank, ES)) +
                                    label = paste0("Zero cross at ", zero_idx),
                                    angle = 90, vjust = -0.2, hjust = 1, size = 3) } +
   scale_x_continuous(limits = limits_x, breaks = breaks_x, expand = c(0,0)) +
-  labs(title = "Enrichment plot: mmu04512", y = "Enrichment score (ES)", x = NULL) +
+  labs(title = "Enrichment plot: mmu04668", y = "Enrichment score (ES)", x = NULL) +
   theme_minimal(base_size = 12) +
   theme(plot.title = element_text(hjust = 0.5))
 
