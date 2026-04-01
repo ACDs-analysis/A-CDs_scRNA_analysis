@@ -6,7 +6,7 @@ suppressPackageStartupMessages({
 })
 set.seed(1234)
 
-# ================== 颜色/cluster级别 ==================
+# ================== Colors / cluster levels ==================
 cluster_levels <- as.character(0:11)
 cluster_colors <- c(
   "0"="#1f77b4","1"="#ff7f0e","2"="#aec7e8","3"="#ffbb78",
@@ -14,10 +14,10 @@ cluster_colors <- c(
   "8"="#8c564b","9"="#c49c94","10"="#e377c2","11"="#bcbd22"
 )
 
-# ================== 1) 内皮细胞：读取并合并（CSV，每个文件一个样本/cluster） ==================
-data_dir <- "E:/科研/单细胞测序/EC gene"   # ← 内皮细胞路径
+# ================== 1) Endothelial cells: read and merge (CSV, one file per sample/cluster) ==================
+data_dir <- "E:/科研/单细胞测序/EC gene"   # ← Endothelial cell path
 files <- list.files(data_dir, pattern="\\.csv$", full.names=TRUE)
-stopifnot("未找到csv文件" = length(files) > 0)
+stopifnot("No CSV files found" = length(files) > 0)
 
 read_expr_csv <- function(path){
   df <- tryCatch(
@@ -26,17 +26,17 @@ read_expr_csv <- function(path){
   )
   stopifnot(ncol(df) >= 2)
   
-  # 假设第1列是gene_id，第2列是gene_symbol（若为空用gene_id代替）
+  # Assume column 1 is gene_id, column 2 is gene_symbol (use gene_id if empty)
   gene_id <- as.character(df[[1]])
   gene_symbol <- as.character(df[[2]])
   gene_symbol[is.na(gene_symbol) | gene_symbol==""] <- gene_id
   genes <- make.unique(ifelse(is.na(gene_symbol)|gene_symbol=="","NA_gene",gene_symbol))
   
-  # 尽量兼容不同导出格式：优先从第5列开始，否则第3列，否则第2列
+  # Accommodate different export formats: prefer starting from column 5, else column 3, else column 2
   expr_start <- if (ncol(df) >= 5) 5 else if (ncol(df) >= 3) 3 else 2
   expr_part <- df[, expr_start:ncol(df), drop = FALSE]
   
-  # 强制数值化（非数值→NA→0）
+  # Force numeric conversion (non-numeric -> NA -> 0)
   for(j in seq_len(ncol(expr_part))){
     expr_part[[j]] <- suppressWarnings(as.numeric(expr_part[[j]]))
   }
@@ -50,10 +50,10 @@ read_expr_csv <- function(path){
 
 expr_list <- list(); meta_list <- list()
 for(f in files){
-  sample_id <- str_trim(str_remove(basename(f), "\\.csv$"))   # 例：Ctrl 1 Cluster 6
-  # 兼容大小写 "Cluster 6" / "cluster 6"
+  sample_id <- str_trim(str_remove(basename(f), "\\.csv$"))   # e.g., Ctrl 1 Cluster 6
+  # Accommodate case "Cluster 6" / "cluster 6"
   clx <- stringr::str_match(sample_id, "(?i)cluster\\s*(\\d+)")[,2]
-  # 从sample_id去掉"cluster x"得到 group（Ctrl 1 / LPS 2 / ACD 3 …）
+  # Remove "cluster x" from sample_id to get group (Ctrl 1 / LPS 2 / ACD 3 …)
   group_id <- str_trim(stringr::str_replace(sample_id, "(?i)cluster\\s*\\d+", ""))
   
   mat <- read_expr_csv(f); if(ncol(mat)==0) next
@@ -73,7 +73,7 @@ for(f in files){
 }
 stopifnot(length(expr_list) > 0)
 
-# —— 并集对齐 + 合并
+# —— Union alignment and merging
 all_genes <- unique(unlist(lapply(expr_list, rownames)))
 expr_list_reindexed <- lapply(expr_list, function(m){
   miss <- setdiff(all_genes, rownames(m))
@@ -94,8 +94,8 @@ stopifnot(ncol(expr_all) == nrow(cell_meta))
 cell_meta$cluster_original <- factor(as.character(cell_meta$cluster_original), levels=cluster_levels)
 rownames(cell_meta) <- cell_meta$cell_id
 
-# ================== 2) 选ECM关键基因 & 预处理（内皮） ==================
-# 统一基因名为大写，便于稳健匹配
+# ================== 2) Select key ECM genes & preprocessing (endothelial) ==================
+# Convert gene names to uppercase for robust matching
 rownames(expr_all) <- gsub("^'|'$", "", rownames(expr_all))
 rownames(expr_all) <- trimws(rownames(expr_all))
 rownames(expr_all) <- toupper(rownames(expr_all))
@@ -105,9 +105,9 @@ ecm_core_genes <- c(
   "KDR","FLT1","ICAM2",
   "PECAM1","OSMR","IL6ST"
 )
-ecm_core_genes <- unique(toupper(ecm_core_genes))   # 统一转大写
+ecm_core_genes <- unique(toupper(ecm_core_genes))   # unify to uppercase
 
-# 从 group 中提取条件为 Ctrl/LPS/ACD（保留原样本标签）
+# Extract conditions from group: Ctrl/LPS/ACD (preserve original sample labels)
 cell_meta$condition <- dplyr::case_when(
   grepl("^\\s*CTRL\\b",  toupper(cell_meta$group)) ~ "Ctrl",
   grepl("^\\s*LPS\\b",   toupper(cell_meta$group)) ~ "LPS",
@@ -117,10 +117,10 @@ cell_meta$condition <- dplyr::case_when(
 cell_meta <- cell_meta[!is.na(cell_meta$condition), , drop = FALSE]
 cell_meta$condition <- factor(cell_meta$condition, levels = c("Ctrl","LPS","ACD"))
 
-# 同步表达矩阵到保留的细胞
+# Synchronize expression matrix to retained cells
 expr_all <- expr_all[, rownames(cell_meta), drop = FALSE]
 
-# 计算 log1p-CPM（每细胞归一化到100万）
+# Compute log1p-CPM (per cell normalization to 1e6)
 calc_log1p_cpm <- function(sparse_counts) {
   libsize <- Matrix::colSums(sparse_counts)
   libsize[libsize == 0] <- 1
@@ -129,16 +129,16 @@ calc_log1p_cpm <- function(sparse_counts) {
 }
 expr_log1p_cpm <- calc_log1p_cpm(expr_all)
 
-# 检查丢失基因
+# Check for missing genes
 present <- ecm_core_genes[ecm_core_genes %in% rownames(expr_log1p_cpm)]
 missing <- setdiff(ecm_core_genes, present)
 if (length(missing) > 0) {
-  message("下列ECM基因在矩阵中未找到（请核对别名/物种符号）：\n",
+  message("The following ECM genes were not found in the matrix (please check aliases/species symbols):\n",
           paste(missing, collapse = ", "))
 }
 stopifnot(length(present) > 0)
 
-# 抽取表达，整理成长表
+# Extract expression and reshape into long format
 expr_ecm <- as.matrix(expr_log1p_cpm[present, , drop = FALSE])
 df_long <- as.data.frame(t(expr_ecm), check.names = FALSE)
 df_long$cell_id <- rownames(df_long)
@@ -149,7 +149,7 @@ plot_df <- dplyr::left_join(df_long,
                             by = "cell_id") %>%
   dplyr::filter(!is.na(condition))
 
-# ========= 小提琴图（分面：gene，5列） =========
+# ========= Violin plot (faceted by gene, 5 columns) =========
 cond_colors <- c("Ctrl"="#aec7e8","LPS"="#ff7f0e","ACD"="#17becf")
 
 p_ecm10 <- ggplot(plot_df, aes(x = condition, y = log1pCPM, fill = condition)) +
@@ -165,12 +165,12 @@ p_ecm10 <- ggplot(plot_df, aes(x = condition, y = log1pCPM, fill = condition)) +
   theme(
     legend.position = "none",
     strip.text = element_text(face = "bold"),
-    panel.grid.major = element_blank(),  # 添加这行：移除主要网格线
-    panel.grid.minor = element_blank(),   # 移除次要网格线
+    panel.grid.major = element_blank(),  # Add this line: remove major grid lines
+    panel.grid.minor = element_blank(),   # Remove minor grid lines
     panel.border = element_rect(color = "black", fill = NA, linewidth = 0.4)
   )
 
-# ========= 统计学标注：Kruskal + 两两Wilcoxon (BH) =========
+# ========= Statistical annotation: Kruskal + pairwise Wilcoxon (BH) =========
 valid_genes10 <- plot_df %>%
   dplyr::group_by(gene) %>%
   dplyr::summarise(n_groups = dplyr::n_distinct(condition[!is.na(log1pCPM)]), .groups="drop") %>%
@@ -178,7 +178,7 @@ valid_genes10 <- plot_df %>%
 
 plot_df_stat <- plot_df %>% dplyr::filter(gene %in% valid_genes10)
 
-# 整体（可选）
+# Overall (optional)
 kruskal_ecm <- plot_df_stat %>%
   dplyr::group_by(gene) %>%
   rstatix::kruskal_test(log1pCPM ~ condition) %>%
@@ -196,7 +196,7 @@ pw_ecm <- plot_df_stat %>%
   ) %>%
   dplyr::ungroup()
 
-# 给每个基因分配不重叠的 y.position
+# Assign non-overlapping y.positions for each gene
 y_top_tbl <- plot_df_stat %>%
   dplyr::group_by(gene) %>%
   dplyr::summarise(y_top = max(log1pCPM, na.rm = TRUE), .groups = "drop")
@@ -209,7 +209,7 @@ pw_ecm <- pw_ecm %>%
                 y.position = y_top + rank_in_gene * (offset * pmax(y_top, 1) + 0.05)) %>%
   dplyr::ungroup()
 
-# 仅保留真实存在的比较（避免某些基因缺组别）
+# Keep only comparisons that actually exist (some genes may lack certain groups)
 present_levels_tbl <- plot_df_stat %>%
   dplyr::group_by(gene) %>%
   dplyr::summarise(levels_present = list(unique(as.character(condition))), .groups = "drop")
@@ -221,7 +221,7 @@ pw_ecm <- pw_ecm %>%
   dplyr::ungroup() %>%
   dplyr::mutate(p.label = dplyr::if_else(!is.na(p.adj.signif), p.adj.signif, rstatix::p_format(p.adj)))
 
-# 叠加显著性
+# Overlay significance
 p_ecm10_sig <- p_ecm10 +
   ggpubr::stat_pvalue_manual(
     pw_ecm,
@@ -235,7 +235,7 @@ p_ecm10_sig <- p_ecm10 +
 
 print(p_ecm10_sig)
 
-# ========= 保存（5列布局；可以按需要调整整图尺寸）=========
+# ========= Save (5-column layout; adjust figure dimensions as needed) =========
 dir.create("figs_ecm", showWarnings = FALSE)
 ggsave(
   filename = file.path("figs_ecm", "EC_Endothelial_ECM8_violin_withSig.pdf"),
