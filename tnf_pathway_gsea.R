@@ -7,7 +7,7 @@
 # Output: PDF only
 # ============================================================
 
-file <- "C:/Users/45214/Desktop/ACD_LPS 巨噬细胞差异基因.csv"
+file <- "C:/Users/ACD_LPS 巨噬细胞差异基因.csv"
 out_pdf <- "TNF_mmu04668_GSEV_fixedticks_zerocross.pdf"
 
 pathway_title <- "TNF signaling pathway (mmu04668)"
