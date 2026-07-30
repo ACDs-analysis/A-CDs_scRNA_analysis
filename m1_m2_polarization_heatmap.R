@@ -25,7 +25,7 @@ cluster_colors <- c(
 )
 
 # ================== 1) Read and merge (according to your file format) ==================
-data_dir <- "C:/Users/monica/Documents/我的文件/科研/博后/课题选择/附子碳点与脓毒症/单细胞测序/华大/巨噬细胞重新聚类/upp5/表达矩阵/gene"  # ← change to your path
+data_dir <- "C:/Users/monica/Documents/巨噬细胞重新聚类/upp5/表达矩阵/gene"  # ← change to your path
 files <- list.files(data_dir, pattern="\\.xlsx$", full.names=TRUE)
 stopifnot("No xlsx files found" = length(files) > 0)
 
